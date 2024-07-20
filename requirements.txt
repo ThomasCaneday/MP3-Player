@@ -1,0 +1,4 @@
+pydub==0.25.1
+pygame==2.1.0
+pytube==12.1.0
+tk
