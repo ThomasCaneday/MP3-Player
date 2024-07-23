@@ -1,17 +1,50 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, Label, Entry, Button, StringVar
 import threading
-import os
 from create_directory import create_directory
 from add_files_to_directory import add_files_to_directory
 from play_and_skip_mp3s import MusicPlayer
 from convert_mp4_to_mp3 import convert_mp4_to_mp3
+from pytube import YouTube
+from pytube import cipher
+import re
+
+# Function to extract throttling function name
+def get_throttling_function_name(js: str) -> str:
+    function_patterns = [
+        r'a\.[a-zA-Z]\s*&&\s*\([a-z]\s*=\s*a\.get\("n"\)\)\s*&&\s*'
+        r'\([a-z]\s*=\s*([a-zA-Z0-9$]+)(\[\d+\])?\([a-z]\)',
+        r'\([a-z]\s*=\s*([a-zA-Z0-9$]+)(\[\d+\])\([a-z]\)',
+    ]
+    for pattern in function_patterns:
+        regex = re.compile(pattern)
+        function_match = regex.search(js)
+        if function_match:
+            if len(function_match.groups()) == 1:
+                return function_match.group(1)
+            idx = function_match.group(2)
+            if idx:
+                idx = idx.strip("[]")
+                array = re.search(
+                    r'var {nfunc}\s*=\s*(\[.+?\]);'.format(
+                        nfunc=re.escape(function_match.group(1))),
+                    js
+                )
+                if array:
+                    array = array.group(1).strip("[]").split(",")
+                    array = [x.strip() for x in array]
+                    return array[int(idx)]
+    raise RegexMatchError(
+        caller="get_throttling_function_name", pattern="multiple"
+    )
+
+cipher.get_throttling_function_name = get_throttling_function_name
 
 class Application(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Python MP3 Player Menu")
-        self.geometry("500x400")
+        self.geometry("500x500")
         self.create_widgets()
 
     def create_widgets(self):
@@ -19,6 +52,7 @@ class Application(tk.Tk):
         self.add_files_frame()
         self.play_mp3s_frame()
         self.convert_mp4_frame()
+        self.download_youtube_frame()
         
         tk.Button(self, text="Exit", command=self.quit).pack(pady=10)
 
@@ -109,6 +143,28 @@ class Application(tk.Tk):
             messagebox.showinfo("Convert MP4 to MP3", f"MP3 file saved as: {mp3_file}")
         else:
             messagebox.showwarning("Input Error", "Please enter valid file paths.")
+
+    def download_youtube_frame(self):
+        frame = tk.Frame(self)
+        frame.pack(pady=10)
+
+        tk.Label(frame, text="YouTube URL:").grid(row=0, column=0)
+        self.youtube_url_entry = tk.Entry(frame, width=50)
+        self.youtube_url_entry.grid(row=0, column=1)
+        tk.Button(frame, text="Download", command=self.download_youtube_video).grid(row=1, column=1)
+
+    def download_youtube_video(self):
+        url = self.youtube_url_entry.get().strip()
+        if url:
+            try:
+                yt = YouTube(url, use_oauth=True, allow_oauth_cache=True)
+                video = yt.streams.first()
+                video.download()
+                messagebox.showinfo("Download YouTube Video", "Video downloaded successfully!")
+            except Exception as e:
+                messagebox.showerror("Download Error", f"An error occurred: {str(e)}")
+        else:
+            messagebox.showwarning("Input Error", "Please enter a valid YouTube URL.")
 
 if __name__ == "__main__":
     app = Application()
