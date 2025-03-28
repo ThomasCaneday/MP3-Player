@@ -8,7 +8,7 @@ This is a Python-based MP3 Player Program with a graphical user interface (GUI) 
 2. **Add Files to Directory**: Add files to a specified directory.
 3. **Play MP3s in a Directory**: Play MP3 files from a specified directory, with the ability to skip the current song.
 4. **Convert MP4 to MP3**: Convert MP4 video files to MP3 audio files.
-5. **YouTube Video Downloader**: Download YouTube videos directly from the GUI.
+5. **YouTube Video Downloader**: Download YouTube videos directly from the GUI using `yt-dlp`.
 
 ## Prerequisites
 
@@ -16,13 +16,13 @@ This is a Python-based MP3 Player Program with a graphical user interface (GUI) 
 - `pydub` library
 - `pygame` library
 - `tkinter` library (usually included with Python)
-- `pytube` library
+- `yt-dlp` library
 
 You can install the required libraries using `pip`:
 ```bash
-pip install pydub pygame tk pytube
+pip install pydub pygame tk yt-dlp
 ```
-Additionally, you need to have `ffmpeg` installed for audio conversion.
+Additionally, you need to have `ffmpeg` installed and accessible from your system's PATH for audio conversion.
 
 ## Installation
 
@@ -39,7 +39,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run the gui_menu.py script to start the program:
+Run the `gui_menu.py` script to start the program:
 ```bash
 python gui_menu.py
 ```
