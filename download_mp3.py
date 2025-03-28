@@ -1,75 +1,68 @@
-from tkinter import *
-from pytube import YouTube
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
+import yt_dlp
 
-from pytube import cipher
-import re
+def progress_hook(d):
+    """Updates the progress bar based on yt-dlp's progress reports."""
+    if d['status'] == 'downloading':
+        # Try to get the total bytes; it may be under a different key.
+        total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
+        if total_bytes:
+            downloaded = d.get('downloaded_bytes', 0)
+            percent = (downloaded / total_bytes) * 100
+            progress_var.set(percent)
+            progress_label.config(text=f"Download Progress: {int(percent)}%")
+            root.update_idletasks()
+    elif d['status'] == 'finished':
+        progress_label.config(text="Download complete!")
 
-def get_throttling_function_name(js: str) -> str:
-    """Extract the name of the function that computes the throttling parameter.
+def download_video():
+    """Downloads the YouTube video using yt-dlp."""
+    url = url_entry.get().strip()
+    if not url:
+        messagebox.showerror("Error", "Please enter a valid YouTube URL.")
+        return
 
-    :param str js:
-        The contents of the base.js asset file.
-    :rtype: str
-    :returns:
-        The name of the function used to compute the throttling parameter.
-    """
-    function_patterns = [
-        # https://github.com/ytdl-org/youtube-dl/issues/29326#issuecomment-865985377
-        # https://github.com/yt-dlp/yt-dlp/commit/48416bc4a8f1d5ff07d5977659cb8ece7640dcd8
-        # var Bpa = [iha];
-        # ...
-        # a.C && (b = a.get("n")) && (b = Bpa[0](b), a.set("n", b),
-        # Bpa.length || iha("")) }};
-        # In the above case, `iha` is the relevant function name
-        r'a\.[a-zA-Z]\s*&&\s*\([a-z]\s*=\s*a\.get\("n"\)\)\s*&&\s*'
-        r'\([a-z]\s*=\s*([a-zA-Z0-9$]+)(\[\d+\])?\([a-z]\)',
-        r'\([a-z]\s*=\s*([a-zA-Z0-9$]+)(\[\d+\])\([a-z]\)',
-    ]
-    #logger.debug('Finding throttling function name')
-    for pattern in function_patterns:
-        regex = re.compile(pattern)
-        function_match = regex.search(js)
-        if function_match:
-            #logger.debug("finished regex search, matched: %s", pattern)
-            if len(function_match.groups()) == 1:
-                return function_match.group(1)
-            idx = function_match.group(2)
-            if idx:
-                idx = idx.strip("[]")
-                array = re.search(
-                    r'var {nfunc}\s*=\s*(\[.+?\]);'.format(
-                        nfunc=re.escape(function_match.group(1))),
-                    js
-                )
-                if array:
-                    array = array.group(1).strip("[]").split(",")
-                    array = [x.strip() for x in array]
-                    return array[int(idx)]
+    # Let the user choose a folder for saving the file.
+    folder = filedialog.askdirectory(title="Select Download Folder")
+    if not folder:
+        return
 
-    raise RegexMatchError(
-        caller="get_throttling_function_name", pattern="multiple"
-    )
+    # Options for yt-dlp:
+    ydl_opts = {
+    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',  # Force mp4 format if available
+    'merge_output_format': 'mp4',  # Merge video and audio into an mp4 container if necessary
+    'outtmpl': f'{folder}/%(title)s.%(ext)s',
+    'progress_hooks': [progress_hook],
+    'noplaylist': True,
+}
 
-cipher.get_throttling_function_name = get_throttling_function_name
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        messagebox.showinfo("Success", "Video downloaded successfully!")
+    except Exception as e:
+        messagebox.showerror("Error", f"Error during download:\n{e}")
 
-root = Tk()
-root.geometry('500x300')
-root.resizable(0,0)
-root.title("YouTube Video Downloader")
+# Set up the main application window.
+root = tk.Tk()
+root.title("YouTube Video Downloader (yt-dlp)")
+root.geometry("600x300")
 
-Label(root,text = 'Youtube Video Downloader', font ='arial 20 bold').pack()
+# URL entry and label.
+tk.Label(root, text="Enter YouTube Video URL:", font=("Helvetica", 14)).pack(pady=10)
+url_entry = tk.Entry(root, width=80, font=("Helvetica", 12))
+url_entry.pack(pady=5)
 
-link = StringVar()
+# Download button.
+download_btn = tk.Button(root, text="Download Video", font=("Helvetica", 12), command=download_video)
+download_btn.pack(pady=10)
 
-Label(root, text = 'Paste Link Here:', font = 'arial 15 bold').place(x= 160 , y = 60)
-link_enter = Entry(root, width = 70,textvariable = link).place(x = 32, y = 90)
-
-def Downloader():     
-    url =YouTube(str(link.get()), use_oauth=True, allow_oauth_cache=True)
-    video = url.streams.first()
-    video.download()
-    Label(root, text = 'DOWNLOADED', font = 'arial 15').place(x= 180 , y = 210)  
-
-Button(root,text = 'DOWNLOAD', font = 'arial 15 bold' ,bg = 'pale violet red', padx = 2, command = Downloader).place(x=180 ,y = 150)
+# Progress bar and label.
+progress_var = tk.DoubleVar()
+progress_bar = ttk.Progressbar(root, variable=progress_var, orient="horizontal", length=500, mode="determinate")
+progress_bar.pack(pady=10)
+progress_label = tk.Label(root, text="Download Progress: 0%", font=("Helvetica", 12))
+progress_label.pack(pady=5)
 
 root.mainloop()
