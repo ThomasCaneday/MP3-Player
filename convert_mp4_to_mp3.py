@@ -43,3 +43,4 @@ if __name__ == "__main__":
                 print(f"MP3 file saved as: {mp3_file}")
     else:
         print("Invalid input path. Please provide a valid MP4 file or directory containing MP4 files.")
+        print("(e.g., ./mp4s/1985.mp4")
